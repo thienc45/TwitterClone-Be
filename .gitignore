@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+.env.development
+.env.development.cc
+package-lock.json
+nodemon.json
