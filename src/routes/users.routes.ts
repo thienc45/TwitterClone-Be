@@ -1,8 +1,15 @@
 import { Router } from 'express'
-import { loginController, registerController, verifyEmailController } from '~/controllers/users.controllers'
+import {
+  forgotPasswordController,
+  loginController,
+  registerController,
+  resendVerifyEmailController,
+  verifyEmailController
+} from '~/controllers/users.controllers'
 import {
   accessTokenValidator,
   emailVerifyTokenValidator,
+  forgotPasswordValidator,
   loginValidator,
   refreshTokenValidator,
   registerValidator
@@ -22,5 +29,15 @@ usersRouter.post(
 )
 
 usersRouter.post('/verify-email', emailVerifyTokenValidator, wrapRequestHandle(verifyEmailController as any))
+
+usersRouter.post('/resend-verify-email', accessTokenValidator, wrapRequestHandle(resendVerifyEmailController as any))
+
+// feat(auth): implement forgot password endpoint
+
+// - Description: Submit email to reset password
+// - Path: /forgot-password
+// - Method: POST
+// - Request Body: { email: string }
+usersRouter.post('/forgot-password', forgotPasswordValidator, wrapRequestHandle(forgotPasswordController as any))
 
 export default usersRouter

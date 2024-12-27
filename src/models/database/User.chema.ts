@@ -22,7 +22,7 @@ interface UserType {
 }
 
 export default class User {
-  _id: ObjectId
+  _id?: ObjectId
   name: string
   email: string
   date_of_birth: Date
@@ -41,11 +41,7 @@ export default class User {
   cover_photo: string
 
   constructor(user: UserType) {
-    // if (!user._id) throw new Error('_id is required')
-    // if (!user.email) throw new Error('email is required')
-    // if (!user.password) throw new Error('password is required')
-
-    this._id = user._id || new ObjectId()
+    this._id = user._id
     this.name = user.name || 'Unknown User'
     this.email = user.email
     this.date_of_birth = user.date_of_birth || new Date(0) // Ngày mặc định nếu không có

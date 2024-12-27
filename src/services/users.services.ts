@@ -9,6 +9,7 @@ import RefreshToken from '~/models/request/RefreshToken.schema'
 import { RegisterReqBody } from '~/models/request/User,request'
 import databaseService from '~/services/database.services'
 import { hashPassWord } from '~/📂utils/cripto'
+import { sendVerifyRegisterEmail } from '~/📂utils/email'
 import { verifyToken } from '~/📂utils/jwt'
 import { signToken } from '~/📂utils/utils'
 import { validate } from '~/📂utils/validation'
@@ -21,6 +22,21 @@ class UsersService {
 
   private signRefeshToken(user_id: string) {
     return signToken({ payload: { user_id, token_type: TokenType.RefreshToken }, options: { expiresIn: '11d' } })
+  }
+
+  private signForgotPasswordToken({ user_id, verify }: { user_id: string; verify: UserVerifyStatus }) {
+    return signToken({
+      payload: {
+        user_id,
+        token_type: TokenType.ForgotPasswordToken,
+        verify
+      },
+
+      privateKey: envConfig.jwtSecretForgotPasswordToken,
+      options: {
+        expiresIn: envConfig.forgotPasswordTokenExpiresIn
+      }
+    })
   }
 
   private signAccessToken({ user_id, verify }: { user_id: string; verify: UserVerifyStatus }) {
@@ -57,17 +73,13 @@ class UsersService {
 
   async register(payload: RegisterReqBody) {
     const user_id = new ObjectId()
-    const email_verify_token = await this.signEmailVerifyToken(user_id.toString() as any)
+    const email_verify_token = await this.signEmailVerifyToken({
+      user_id: user_id.toString(),
+      verify: UserVerifyStatus.Unverified
+    })
 
     try {
       const { name, email, password, date_of_birth } = payload
-      // const result = await databaseService.users.insertOne(
-      //   new User({
-      //     ...payload,
-      //     date_of_birth: new Date(payload.date_of_birth),
-      //     password: hashPassWord(payload.password)
-      //   })
-      // )
 
       await databaseService.users.insertOne(
         new User({
@@ -78,7 +90,6 @@ class UsersService {
           password: hashPassWord(payload.password)
         })
       )
-      console.log(email_verify_token + 'email_verify_token')
 
       const [access_token, refresh_token] = await this.signAccessAndRefreshToken({
         user_id: user_id.toString(),
@@ -168,6 +179,8 @@ class UsersService {
       ])
     ])
     const [access_token, refresh_token] = token
+    console.log(token)
+
     const { iat, exp } = await this.decodeRefreshToken(refresh_token)
 
     await databaseService.refreshTokens.insertOne(
@@ -179,7 +192,46 @@ class UsersService {
       refresh_token
     }
   }
+
+  async resendVerifyEmail(user_id: string, email: string) {
+    const email_verify_token = await this.signEmailVerifyToken({
+      user_id,
+      verify: UserVerifyStatus.Unverified
+    })
+    await sendVerifyRegisterEmail(email, email_verify_token)
+
+    // Cập nhật lại giá trị email_verify_token trong document user
+    await databaseService.users.updateOne(
+      { _id: new ObjectId(user_id) },
+      {
+        $set: {
+          email_verify_token
+        },
+        $currentDate: {
+          updated_at: true
+        }
+      }
+    )
+    return {
+      message: USERS_MESSAGES.RESEND_VERIFY_EMAIL_SUCCESS
+    }
+  }
+
+  async forgotPassword({ user_id, verify, email }: { user_id: string; email: string; verify: UserVerifyStatus }) {
+    const forgot_password_token = await this.signForgotPasswordToken({
+      user_id,
+      verify
+    })
+    await databaseService.users.updateOne({ _id: new ObjectId(user_id) }, [
+      {
+        $set: {
+          forgot_password_token,
+          updated_at: '$$NOW'
+        }
+      }
+    ])
+    console.log(forgot_password_token)
+  }
 }
 
-const usersService = new UsersService()
-export default usersService
+export const usersService = new UsersService()
