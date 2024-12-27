@@ -231,6 +231,9 @@ class UsersService {
       }
     ])
     console.log(forgot_password_token)
+    return {
+      message : USERS_MESSAGES.VERIFY_FORGOT_PASSWORD_SUCCESS
+    }
   }
 }
 
