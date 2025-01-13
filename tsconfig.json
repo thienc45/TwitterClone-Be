@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "module": "NodeNext", // Quy định output module được sử dụng
-    "moduleResolution": "NodeNext",
+    "module": "esnext", // Quy định output module được sử dụng
+    "moduleResolution": "bundler",
     "target": "ES2023", // Target output cho code
     "outDir": "dist", // Đường dẫn output cho thư mục build
     "esModuleInterop": true,
@@ -14,7 +14,8 @@
   },
   // "files": ["src/type.d.ts"], // Các file dùng để defined global type cho dự án
   // "include": ["src/**/*"] // Đường dẫn include cho các file cần build
-
+  // "module": "esnext",
+  // "moduleResolution": "bundler",
   "include": ["src/**/*"], // Bao gồm tất cả file trong thư mục src
   "exclude": ["node_modules", "dist"] // Loại trừ thư mục không cần thiết
 }

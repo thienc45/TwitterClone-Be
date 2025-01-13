@@ -1,17 +1,21 @@
 import { checkSchema, ParamSchema } from 'express-validator'
 import { ErrorWithStatus } from '~/models/Error'
-import usersService from '~/services/users.services'
 import { validate } from '~/📂utils/validation'
 config()
 
 import { config } from 'dotenv'
+import { NextFunction, Request, Response } from 'express'
 import { JsonWebTokenError } from 'jsonwebtoken'
 import { capitalize } from 'lodash'
 import { ObjectId } from 'mongodb'
 import { envConfig } from '~/constants/config'
+import { UserVerifyStatus } from '~/constants/enums/enums'
 import HTTP_STATUS from '~/constants/httpStatus/httpStatus'
 import { USERS_MESSAGES } from '~/constants/messages/messages'
+import { REGEX_USERNAME } from '~/constants/regex'
+import { TokenPayload } from '~/models/request/User,request'
 import databaseService from '~/services/database.services'
+import { usersService } from '~/services/users.services'
 import { hashPassWord } from '~/📂utils/cripto'
 import { verifyToken } from '~/📂utils/jwt'
 
@@ -202,6 +206,7 @@ export const registerValidator = validate(
         custom: {
           options: async (value) => {
             const isExistEmail = await usersService.checkEmailExist(value)
+            console.log(isExistEmail + 'isExistEmail')
             if (isExistEmail) {
               throw new Error(USERS_MESSAGES.EMAIL_ALREADY_EXISTS)
             }
@@ -359,7 +364,7 @@ export const forgotPasswordValidator = validate(
   )
 )
 
-const forgotPasswordTokenSchema: ParamSchema = {
+export const forgotPasswordTokenSchema: ParamSchema = {
   trim: true,
   custom: {
     options: async (value: string, { req }) => {
@@ -422,3 +427,156 @@ export const resetPasswordValidator = validate(
     ['body']
   )
 )
+
+export const verifiedUserValidator = (req: Request, res: Response<any, Record<string, any>>, next: NextFunction) => {
+  const { verify } = req.decoded_authorization as TokenPayload
+  if (verify !== UserVerifyStatus.Verified) {
+    return next(
+      new ErrorWithStatus({
+        message: USERS_MESSAGES.USER_NOT_VERIFIED,
+        status: HTTP_STATUS.FORBIDDEN
+      })
+    )
+  }
+  next()
+}
+
+export const updateMeValidator = validate(
+  checkSchema(
+    {
+      name: {
+        ...nameSchema,
+        optional: true,
+        notEmpty: undefined
+      },
+      date_of_birth: {
+        ...dateOfBirthSchema,
+        optional: true
+      },
+      bio: {
+        optional: true,
+        isString: {
+          errorMessage: USERS_MESSAGES.BIO_MUST_BE_STRING
+        },
+        trim: true,
+        isLength: {
+          options: {
+            min: 1,
+            max: 200
+          },
+          errorMessage: USERS_MESSAGES.BIO_LENGTH
+        }
+      },
+      location: {
+        optional: true,
+        isString: {
+          errorMessage: USERS_MESSAGES.LOCATION_MUST_BE_STRING
+        },
+        trim: true,
+        isLength: {
+          options: {
+            min: 1,
+            max: 200
+          },
+          errorMessage: USERS_MESSAGES.LOCATION_LENGTH
+        }
+      },
+      website: {
+        optional: true,
+        isString: {
+          errorMessage: USERS_MESSAGES.WEBSITE_MUST_BE_STRING
+        },
+        trim: true,
+        isLength: {
+          options: {
+            min: 1,
+            max: 200
+          },
+          errorMessage: USERS_MESSAGES.WEBSITE_LENGTH
+        }
+      },
+      username: {
+        optional: true,
+        isString: {
+          errorMessage: USERS_MESSAGES.USERNAME_MUST_BE_STRING
+        },
+        trim: true,
+        custom: {
+          options: async (value: string, { req }) => {
+            if (!REGEX_USERNAME.test(value)) {
+              throw Error(USERS_MESSAGES.USERNAME_INVALID)
+            }
+            const user = await databaseService.users.findOne({ username: value })
+            // Nếu đã tồn tại username này trong db
+            // thì chúng ta không cho phép update
+            if (user) {
+              throw Error(USERS_MESSAGES.USERNAME_EXISTED)
+            }
+          }
+        }
+      },
+      avatar: imageSchema,
+      cover_photo: imageSchema
+    },
+    ['body']
+  )
+)
+
+export const followValidator = validate(
+  checkSchema(
+    {
+      followed_user_id: userIdSchema
+    },
+    ['body']
+  )
+)
+
+export const unfollowValidator = validate(
+  checkSchema(
+    {
+      user_id: userIdSchema
+    },
+    ['params']
+  )
+)
+
+export const changePasswordValidator = validate(
+  checkSchema({
+    old_password: {
+      ...passwordSchema,
+      custom: {
+        options: async (value: string, { req }) => {
+          const { user_id } = (req as Request).decoded_authorization as TokenPayload
+          const user = await databaseService.users.findOne({ _id: new ObjectId(user_id) })
+          if (!user) {
+            throw new ErrorWithStatus({
+              message: USERS_MESSAGES.USER_NOT_FOUND,
+              status: HTTP_STATUS.NOT_FOUND
+            })
+          }
+          const { password } = user
+          const isMatch = hashPassWord(value) === password
+          if (!isMatch) {
+            throw new ErrorWithStatus({
+              message: USERS_MESSAGES.OLD_PASSWORD_NOT_MATCH,
+              status: HTTP_STATUS.UNAUTHORIZED
+            })
+          }
+        }
+      }
+    },
+    new_password: passwordSchema,
+    confirm_new_password: confirmPasswordSchema
+  })
+)
+
+export const isUserLoggedInValidator = (middleware: (req: Request, res: Response, next: NextFunction) => void) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (req.headers.authorization) {
+      return middleware(req, res, next)
+    }
+    next()
+  }
+}
+
+

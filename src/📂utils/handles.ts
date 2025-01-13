@@ -1,12 +1,10 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express'
 
-export const wrapRequestHandle = (func: RequestHandler) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    // Promise.resolve()
-    //   .then(() => func(req, res, next))
-    //   .catch(next)
+
+export const wrapRequestHandle = <P>(func: RequestHandler<P, any, any, any>) => {
+  return async (req: Request<P>, res: Response, next: NextFunction) => {
     try {
-      func(req, res, next)
+      await func(req, res, next)
     } catch (error) {
       next(error)
     }

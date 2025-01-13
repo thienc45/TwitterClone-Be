@@ -1,7 +1,11 @@
 import { config } from 'dotenv'
 import { Collection, Db, MongoClient } from 'mongodb'
+import { envConfig } from '~/constants/config'
+import Follower from '~/models/database/Follower.schema'
 import User from '~/models/database/User.chema'
+import VideoStatus from '~/models/database/VideoStatus.schema'
 import RefreshToken from '~/models/request/RefreshToken.schema'
+import Tweet from '~/models/schemas/Tweet.schema'
 config()
 
 require('dotenv').config()
@@ -31,12 +35,65 @@ class DatabaseService {
     }
   }
 
+  async indexUsers() {
+    const exists = await this.users.indexExists(['email_1_password_1', 'email_1', 'username_1'])
+
+    if (!exists) {
+      this.users.createIndex({ email: 1, password: 1 })
+      this.users.createIndex({ email: 1 }, { unique: true })
+      this.users.createIndex({ username: 1 }, { unique: true })
+    }
+  }
+  async indexRefreshTokens() {
+    const exists = await this.refreshTokens.indexExists(['exp_1', 'token_1'])
+
+    if (!exists) {
+      this.refreshTokens.createIndex({ token: 1 })
+      this.refreshTokens.createIndex(
+        { exp: 1 },
+        {
+          expireAfterSeconds: 0
+        }
+      )
+    }
+  }
+  async indexVideoStatus() {
+    const exists = await this.videoStatus.indexExists(['name_1'])
+
+    if (!exists) {
+      this.videoStatus.createIndex({ name: 1 })
+    }
+  }
+  async indexFollowers() {
+    const exists = await this.followers.indexExists(['user_id_1_followed_user_id_1'])
+    if (!exists) {
+      this.followers.createIndex({ user_id: 1, followed_user_id: 1 })
+    }
+  }
+  async indexTweets() {
+    const exists = await this.tweets.indexExists(['content_text'])
+    if (!exists) {
+      this.tweets.createIndex({ content: 'text' }, { default_language: 'none' })
+    }
+  }
   get users(): Collection<User> {
     return this.db.collection(process.env.DB_USERS_COLLECTION as string)
   }
 
+  get tweets(): Collection<Tweet> {
+    return this.db.collection(envConfig.dbTweetsCollection)
+  }
+
   get refreshTokens(): Collection<RefreshToken> {
     return this.db.collection(process.env.DB_REFRESH_TOKENS_COLLECTION as string)
+  }
+
+  get followers(): Collection<Follower> {
+    return this.db.collection(envConfig.dbFollowersCollection)
+  }
+
+  get videoStatus(): Collection<VideoStatus> {
+    return this.db.collection(envConfig.dbVideoStatusCollection)
   }
 }
 

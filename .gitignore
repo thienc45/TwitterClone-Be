@@ -5,3 +5,4 @@ dist/
 .env.development.cc
 package-lock.json
 nodemon.json
+uploads
