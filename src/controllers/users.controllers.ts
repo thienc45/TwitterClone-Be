@@ -42,6 +42,7 @@ export const registerController = async (
   next: NextFunction
 ) => {
   const { email, password, date_of_birth } = req.body
+
   try {
     const formattedDateOfBirth = new Date(date_of_birth)
     const result = await usersService.register({ ...req.body, date_of_birth: formattedDateOfBirth.toISOString() })

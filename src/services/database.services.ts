@@ -1,7 +1,11 @@
 import { config } from 'dotenv'
 import { Collection, Db, MongoClient } from 'mongodb'
 import { envConfig } from '~/constants/config'
+import Bookmark from '~/models/database/Bookmark.schema'
+import Conversation from '~/models/database/Conversations.schema'
 import Follower from '~/models/database/Follower.schema'
+import Hashtag from '~/models/database/Hashtag.schema'
+import Like from '~/models/database/Like.schema'
 import User from '~/models/database/User.chema'
 import VideoStatus from '~/models/database/VideoStatus.schema'
 import RefreshToken from '~/models/request/RefreshToken.schema'
@@ -94,6 +98,19 @@ class DatabaseService {
 
   get videoStatus(): Collection<VideoStatus> {
     return this.db.collection(envConfig.dbVideoStatusCollection)
+  }
+
+  get hashtags(): Collection<Hashtag> {
+    return this.db.collection(envConfig.dbHashtagsCollection)
+  }
+  get bookmarks(): Collection<Bookmark> {
+    return this.db.collection(envConfig.dbBookmarksCollection)
+  }
+  get likes(): Collection<Like> {
+    return this.db.collection(envConfig.dbLikesCollection)
+  }
+  get conversations(): Collection<Conversation> {
+    return this.db.collection(envConfig.dbConversationCollection)
   }
 }
 

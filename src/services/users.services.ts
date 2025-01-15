@@ -1,5 +1,6 @@
 import { config } from 'dotenv'
 import { checkSchema } from 'express-validator'
+import { console } from 'inspector'
 import { ObjectId } from 'mongodb'
 import { envConfig } from '~/constants/config'
 import { TokenType, UserVerifyStatus } from '~/constants/enums/enums'
@@ -64,10 +65,6 @@ class UsersService {
     })
   }
 
-  // private signRefeshToken(user_id: string) {
-  //   return signToken({ payload: { user_id, token_type: TokenType.RefreshToken }, options: { expiresIn: '11d' } })
-  // }
-
   private signRefeshToken({ user_id, verify, exp }: { user_id: string; verify: UserVerifyStatus; exp?: number }) {
     if (exp) {
       return signToken({
@@ -122,9 +119,6 @@ class UsersService {
     })
   }
 
-  // private signAccessAndRefreshToken({ user_id, verify }: { user_id: string; verify: UserVerifyStatus }) {
-  //   return Promise.all([this.signAccesToken(user_id), this.signRefeshToken(user_id)])
-  // }
   private signAccessAndRefreshToken({ user_id, verify }: { user_id: string; verify: UserVerifyStatus }) {
     return Promise.all([this.signAccessToken({ user_id, verify }), this.signRefeshToken({ user_id, verify })])
   }
@@ -152,7 +146,6 @@ class UsersService {
 
     try {
       const { name, email, password, date_of_birth } = payload
-
       await databaseService.users.insertOne(
         new User({
           ...payload,
@@ -179,6 +172,8 @@ class UsersService {
 
       return { access_token, refresh_token, email_verify_token }
     } catch (error) {
+      console.error('Register failed:', error)
+
       throw new Error('Register failed')
     }
   }
@@ -251,8 +246,6 @@ class UsersService {
       ])
     ])
     const [access_token, refresh_token] = token
-    console.log(token)
-
     const { iat, exp } = await this.decodeRefreshToken(refresh_token)
 
     await databaseService.refreshTokens.insertOne(
