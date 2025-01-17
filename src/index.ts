@@ -1,49 +1,86 @@
-import dotenv, { config } from 'dotenv'
+import cors from 'cors'
+import { config } from 'dotenv'
 import express from 'express'
+import { createServer } from 'http'
+import { Server } from 'socket.io'
 import usersRouter from '~/routes/users.routes'
-import { createRandomUser } from '~/📂utils/fake'
 import { UPLOAD_VIDEO_DIR } from './constants/dir'
 import bookmarksRouter from './routes/bookmarks.routes'
 import { mediasRouter } from './routes/medias.routes'
 import staticRouter from './routes/static.routes'
 import tweetsRouter from './routes/tweets.routes'
 import databaseService from './services/database.services'
-import '~/utils/fake'
 
-config()
+config() // Load environment variables from .env file
+
 const app = express()
-databaseService.connect().then(() => {
-  databaseService.indexUsers()
-  databaseService.indexRefreshTokens()
-  databaseService.indexVideoStatus()
-  databaseService.indexFollowers()
-  databaseService.indexTweets()
-})
-const port = 40000
-// Define the root route
-// app.post('/', (req, res) => {
-//   res.send('Hello, World!')
-// })
-const newUser = createRandomUser()
-console.log(newUser)
+const httpServer = createServer(app)
 
+const io = new Server(httpServer, {
+  cors: {
+    origin: 'http://localhost:3000',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+  }
+})
+
+databaseService.connect().then(() => {
+  console.log('Database connected successfully.')
+})
+
+const port = 40000
+
+const users: {
+  [key: string]: {
+    socket_id: string
+  }
+} = {}
+
+io.on('connection', (socket) => {
+  const user_id = socket.handshake.auth?._id
+  console.log(user_id)
+  if (!user_id) {
+    socket.disconnect()
+    return
+  }
+  users[user_id] = { socket_id: socket.id }
+
+  socket.on('private message', (data) => {
+    console.log('Private message received:', data)
+    const receiverSocketId = users[data.to]?.socket_id
+    socket.to(receiverSocketId).emit('receive private message', {
+      data: data.content,
+      from: user_id
+    })
+  })
+
+  socket.on('disconnect', () => {
+    delete users[user_id]
+  })
+})
+app.use(
+  cors({
+    origin: 'http://localhost:3000',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+  })
+)
 app.use(express.json())
-// Use the users router
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Server is running' })
+})
+
 app.use('/users', usersRouter)
 app.use('/medias', mediasRouter)
 app.use('/static', staticRouter)
 app.use('/static/video', express.static(UPLOAD_VIDEO_DIR))
 app.use('/tweets', tweetsRouter)
 app.use('/bookmarks', bookmarksRouter)
-// app.use('/likes', likesRouter)
-// app.use('/search', searchRouter)
-// app.use('/conversations', conversationsRouter)
-// databaseService.connect()
 
 // Start the server
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
+httpServer.listen(port, () => {
+  console.log(`Server is listening on http://localhost:${port}`)
 })
-// app.use(defaultErrorHandler as any)
-
-dotenv.config()
