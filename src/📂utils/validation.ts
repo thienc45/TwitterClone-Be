@@ -24,7 +24,7 @@
 //       entityError.errors[key] = msg
 //     }
 
-//     // res.status(422).json({ errors: errorObject })
+//     // res.status().json({ errors: errorObject })
 //     //loi khong tra ve
 //     next(entityError)
 //   }
@@ -52,7 +52,6 @@ export const validate = (validation: RunnableValidationChains<ValidationChain>) 
     const entityError = new EntityError({ errors: {} })
     for (const key in errorsObject) {
       const { msg } = errorsObject[key]
-      // Trả về lỗi không phải là lỗi do validate
       if (msg instanceof ErrorWithStatus && msg.status !== HTTP_STATUS.UNPROCESSABLE_ENTITY) {
         return next(msg)
       }

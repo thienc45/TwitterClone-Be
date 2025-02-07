@@ -6,10 +6,12 @@ import { Server } from 'socket.io'
 import usersRouter from '~/routes/users.routes'
 import { UPLOAD_VIDEO_DIR } from './constants/dir'
 import bookmarksRouter from './routes/bookmarks.routes'
+import conversationsRouter from './routes/conversations.routes'
 import { mediasRouter } from './routes/medias.routes'
 import staticRouter from './routes/static.routes'
 import tweetsRouter from './routes/tweets.routes'
 import databaseService from './services/database.services'
+import initSocket from './📂utils/socket'
 
 config() // Load environment variables from .env file
 
@@ -37,28 +39,28 @@ const users: {
   }
 } = {}
 
-io.on('connection', (socket) => {
-  const user_id = socket.handshake.auth?._id
-  console.log(user_id)
-  if (!user_id) {
-    socket.disconnect()
-    return
-  }
-  users[user_id] = { socket_id: socket.id }
+// io.on('connection', (socket) => {
+//   const user_id = socket.handshake.auth?._id
+//   console.log(user_id)
+//   if (!user_id) {
+//     socket.disconnect()
+//     return
+//   }
+//   users[user_id] = { socket_id: socket.id }
 
-  socket.on('private message', (data) => {
-    console.log('Private message received:', data)
-    const receiverSocketId = users[data.to]?.socket_id
-    socket.to(receiverSocketId).emit('receive private message', {
-      data: data.content,
-      from: user_id
-    })
-  })
+//   socket.on('private message', (data) => {
+//     console.log('Private message received:', data)
+//     const receiverSocketId = users[data.to]?.socket_id
+//     socket.to(receiverSocketId).emit('receive private message', {
+//       data: data.content,
+//       from: user_id
+//     })
+//   })
 
-  socket.on('disconnect', () => {
-    delete users[user_id]
-  })
-})
+//   socket.on('disconnect', () => {
+//     delete users[user_id]
+//   })
+// })
 app.use(
   cors({
     origin: 'http://localhost:3000',
@@ -79,6 +81,9 @@ app.use('/static', staticRouter)
 app.use('/static/video', express.static(UPLOAD_VIDEO_DIR))
 app.use('/tweets', tweetsRouter)
 app.use('/bookmarks', bookmarksRouter)
+app.use('/conversations', conversationsRouter)
+
+initSocket(httpServer)
 
 // Start the server
 httpServer.listen(port, () => {

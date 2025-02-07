@@ -234,7 +234,6 @@ export const accessTokenValidator = validate(
               throw new Error(USERS_MESSAGES.ACCESS_TOKEN_IS_REQUIRED)
             }
 
-            console.log(process.env.JWT_SECRET)
             try {
               const decoded_authorization = await verifyToken({
                 token: access_token,
@@ -540,6 +539,15 @@ export const unfollowValidator = validate(
   )
 )
 
+export const getConversationsValidator = validate(
+  checkSchema(
+    {
+      receiver_id: userIdSchema
+    },
+    ['params']
+  )
+)
+
 export const changePasswordValidator = validate(
   checkSchema({
     old_password: {
@@ -578,5 +586,3 @@ export const isUserLoggedInValidator = (middleware: (req: Request, res: Response
     next()
   }
 }
-
-
